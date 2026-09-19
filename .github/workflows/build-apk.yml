@@ -6,33 +6,293 @@ on:
     branches: [ "main", "master" ]
 
 jobs:
-  build-apk:
+  build:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - name: Create Android project
+        run: |
+          mkdir -p app/src/main/java/com/studvra/pro
+          mkdir -p app/src/main/assets
+          mkdir -p app/src/main/res/values
 
-      - name: Set up JDK 17
+          cat > settings.gradle <<'EOF'
+          pluginManagement {
+              repositories {
+                  google()
+                  mavenCentral()
+                  gradlePluginPortal()
+              }
+          }
+          dependencyResolutionManagement {
+              repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+              repositories {
+                  google()
+                  mavenCentral()
+              }
+          }
+          rootProject.name = "StudvraPro"
+          include(":app")
+          EOF
+
+          cat > build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application' version '8.6.1' apply false
+          }
+          EOF
+
+          cat > gradle.properties <<'EOF'
+          android.useAndroidX=true
+          android.nonTransitiveRClass=true
+          EOF
+
+          cat > app/build.gradle <<'EOF'
+          plugins {
+              id 'com.android.application'
+          }
+
+          android {
+              namespace 'com.studvra.pro'
+              compileSdk 35
+
+              defaultConfig {
+                  applicationId 'com.studvra.pro'
+                  minSdk 23
+                  targetSdk 35
+                  versionCode 1
+                  versionName '1.0'
+              }
+          }
+          EOF
+
+          cat > app/src/main/AndroidManifest.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+              <application
+                  android:theme="@style/AppTheme"
+                  android:label="Studvra Pro"
+                  android:allowBackup="true">
+                  <activity
+                      android:name=".MainActivity"
+                      android:screenOrientation="portrait"
+                      android:exported="true">
+                      <intent-filter>
+                          <action android:name="android.intent.action.MAIN"/>
+                          <category android:name="android.intent.category.LAUNCHER"/>
+                      </intent-filter>
+                  </activity>
+              </application>
+          </manifest>
+          EOF
+
+          cat > app/src/main/res/values/styles.xml <<'EOF'
+          <?xml version="1.0" encoding="utf-8"?>
+          <resources>
+              <style name="AppTheme" parent="android:style/Theme.Material.Light.NoActionBar">
+                  <item name="android:fontFamily">sans</item>
+                  <item name="android:colorAccent">#6C4CE8</item>
+                  <item name="android:navigationBarColor">#FFFFFF</item>
+                  <item name="android:statusBarColor">#6C4CE8</item>
+              </style>
+          </resources>
+          EOF
+
+          cat > app/src/main/java/com/studvra/pro/MainActivity.java <<'EOF'
+          package com.studvra.pro;
+
+          import android.app.Activity;
+          import android.os.Bundle;
+          import android.webkit.WebSettings;
+          import android.webkit.WebView;
+          import android.webkit.WebViewClient;
+
+          public class MainActivity extends Activity {
+              @Override
+              protected void onCreate(Bundle savedInstanceState) {
+                  super.onCreate(savedInstanceState);
+
+                  WebView web = new WebView(this);
+                  WebSettings s = web.getSettings();
+                  s.setJavaScriptEnabled(true);
+                  s.setDomStorageEnabled(true);
+                  web.setWebViewClient(new WebViewClient());
+                  web.loadUrl("file:///android_asset/index.html");
+
+                  setContentView(web);
+              }
+          }
+          EOF
+
+          cat > app/src/main/assets/index.html <<'EOF'
+          <!doctype html>
+          <html>
+          <head>
+          <meta name="viewport" content="width=device-width,initial-scale=1">
+          <title>Studvra Pro</title>
+          <style>
+          *{box-sizing:border-box}
+          body{margin:0;font-family:Arial,sans-serif;background:#f5f3ff;color:#17152b}
+          header{background:linear-gradient(135deg,#6c4ce8,#4361ee);color:white;padding:28px 20px;border-radius:0 0 28px 28px}
+          h1{margin:0;font-size:30px}
+          .tag{margin-top:6px;opacity:.9}
+          main{padding:18px}
+          .card{background:white;border-radius:20px;padding:18px;margin-bottom:15px;box-shadow:0 5px 18px #00000012}
+          button{border:0;border-radius:14px;padding:14px 18px;background:#6c4ce8;color:white;font-size:16px;font-weight:bold;margin:5px}
+          button.alt{background:#eeeaff;color:#5135c9}
+          .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+          .big{font-size:22px;font-weight:bold}
+          #quiz{display:none}
+          .option{display:block;width:100%;text-align:left;background:#f0edff;color:#222;margin:9px 0}
+          .selected{background:#6c4ce8;color:white}
+          .muted{color:#777}
+          .timer{font-size:24px;font-weight:bold;text-align:center}
+          </style>
+          </head>
+          <body>
+          <header>
+            <h1>Studvra Pro</h1>
+            <div class="tag">Study Smart. Practice Better.</div>
+          </header>
+
+          <main>
+            <section id="home">
+              <div class="card">
+                <div class="big">Mock Test</div>
+                <p class="muted">Choose your test size</p>
+                <button onclick="start(50)">50 Questions</button>
+                <button onclick="start(100)">100 Questions</button>
+                <button onclick="start(180)">180 Questions</button>
+              </div>
+
+              <div class="card">
+                <b>Subjects</b>
+                <div class="grid">
+                  <button class="alt">Physics</button>
+                  <button class="alt">Chemistry</button>
+                  <button class="alt">Biology</button>
+                  <button class="alt">GK & English</button>
+                </div>
+              </div>
+            </section>
+
+            <section id="quiz">
+              <div class="card">
+                <div class="timer" id="timer">00:00</div>
+                <p id="progress"></p>
+                <h2 id="question"></h2>
+                <div id="options"></div>
+                <button class="alt" onclick="prev()">Previous</button>
+                <button onclick="next()">Next</button>
+                <button class="alt" onclick="finish()">Submit</button>
+              </div>
+            </section>
+
+            <section id="result" style="display:none">
+              <div class="card">
+                <h2>Test Result</h2>
+                <div class="big" id="score"></div>
+                <p id="details"></p>
+                <button onclick="location.reload()">New Test</button>
+              </div>
+            </section>
+          </main>
+
+          <script>
+          const bank=[
+          ["SI unit of force is:",["Joule","Newton","Watt","Pascal"],1],
+          ["Acceleration due to gravity near Earth is approximately:",["4.9","9.8","19.6","98"],1],
+          ["Which particle has negative charge?",["Proton","Neutron","Electron","Photon"],2],
+          ["pH of a neutral solution at 25°C is:",["0","5","7","14"],2],
+          ["Atomic number represents number of:",["Neutrons","Protons","Nucleons","Isotopes"],1],
+          ["Which gas is essential for aerobic respiration?",["Nitrogen","Oxygen","Hydrogen","Helium"],1],
+          ["Powerhouse of the cell is:",["Nucleus","Ribosome","Mitochondrion","Golgi body"],2],
+          ["DNA stands for:",["Deoxyribonucleic acid","Dinucleic acid","Deoxygenated nucleic acid","None"],0],
+          ["Synonym of 'rapid' is:",["Slow","Fast","Weak","Late"],1],
+          ["Opposite of 'ancient' is:",["Old","Modern","Historic","Past"],1]
+          ];
+
+          let n=50,q=0,answers=[],seconds=0,tick;
+
+          function start(count){
+            n=count;q=0;answers=Array(n).fill(-1);seconds=n*60;
+            document.getElementById("home").style.display="none";
+            document.getElementById("quiz").style.display="block";
+            show();
+            tick=setInterval(()=>{
+              seconds--;
+              clock();
+              if(seconds<=0) finish();
+            },1000);
+          }
+
+          function clock(){
+            let m=Math.floor(seconds/60),s=seconds%60;
+            document.getElementById("timer").textContent=
+              String(m).padStart(2,"0")+":"+String(s).padStart(2,"0");
+          }
+
+          function show(){
+            let x=bank[q%bank.length];
+            document.getElementById("progress").textContent=
+              "Question "+(q+1)+" of "+n;
+            document.getElementById("question").textContent=x[0];
+            let box=document.getElementById("options");
+            box.innerHTML="";
+            x[1].forEach((v,i)=>{
+              let b=document.createElement("button");
+              b.className="option"+(answers[q]===i?" selected":"");
+              b.textContent=v;
+              b.onclick=()=>{answers[q]=i;show()};
+              box.appendChild(b);
+            });
+            clock();
+          }
+
+          function next(){if(q<n-1){q++;show()}}
+          function prev(){if(q>0){q--;show()}}
+
+          function finish(){
+            clearInterval(tick);
+            let correct=0,wrong=0;
+            for(let i=0;i<n;i++){
+              let x=bank[i%bank.length];
+              if(answers[i]===-1)continue;
+              if(answers[i]===x[2])correct++;
+              else wrong++;
+            }
+            let score=correct-(wrong*.25);
+            document.getElementById("quiz").style.display="none";
+            document.getElementById("result").style.display="block";
+            document.getElementById("score").textContent="Score: "+score.toFixed(2);
+            document.getElementById("details").textContent=
+              "Correct: "+correct+" | Wrong: "+wrong+
+              " | Unattempted: "+(n-correct-wrong);
+          }
+          </script>
+          </body>
+          </html>
+          EOF
+
+      - name: Setup Java
         uses: actions/setup-java@v4
         with:
           distribution: temurin
           java-version: '17'
 
-      - name: Set up Android SDK
+      - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Install Android SDK packages
+      - name: Install SDK
         run: |
-          yes | sdkmanager --licenses > /dev/null || true
+          yes | sdkmanager --licenses >/dev/null || true
           sdkmanager "platform-tools" "platforms;android-35" "build-tools;35.0.0"
 
-      - name: Install Gradle
+      - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: '8.7'
 
-      - name: Build Debug APK
+      - name: Build APK
         run: gradle :app:assembleDebug --stacktrace
 
       - name: Upload APK
@@ -40,4 +300,3 @@ jobs:
         with:
           name: Studvra-Pro-debug-APK
           path: app/build/outputs/apk/debug/app-debug.apk
-          if-no-files-found: error
